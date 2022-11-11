@@ -16,6 +16,6 @@ Here's the general approach for each pixel:
 9. Check dEITP of original pixel vs clipped pixel
 
 Usage in MPC-BE (MPC-HC is very similar):
-1. Place code in a .hlsl file such as outofgamut.hlsl and place the .hlsl file in the MPC-BE Shaders folder (normally AppData\Roaming\MPC-BE\Shaders)
+1. Place gamutShader.hlsl in the MPC-BE Shaders folder (normally AppData\Roaming\MPC-BE\Shaders)
 2. In MPC-BE, goto Shaders...Select shaders... and select the shader and add it as a post-resize shader, and enable post-resize shaders.
 3. All post-resize shaders can be toggled on/off using ctrl+alt+p
