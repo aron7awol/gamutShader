@@ -1,7 +1,8 @@
 // $MinimumShaderProfile: ps_3_0
 // Highlight out-of-gamut colors
 
-#define Mode 1  //Mode 1: P3, Mode 2: 709, Mode 3: NZ8 no filter
+#define Mode 1  //Mode 1: Desat in-gamut and dEITP<1 colors, Mode 2: Clip out-of-gamut colors
+#define Gamut 1 //Gamut 1: P3, Gamut 2: 709, Gamut 3: NZ8 no filter
  
 //PQ constants
 const static float m1 = 2610.0 / 16384;
@@ -68,12 +69,12 @@ const static float3x3 XYZ_2_NZ8_RGB = {
      0.0156066, -0.0404562,  0.9417525
 };
 
-#if Mode == 2
+#if Gamut == 2
 // 709 primaries
 const static float2 r = {0.64, 0.33};
 const static float2 g = {0.3, 0.6};
 const static float2 b = {0.15, 0.06};
-#elif Mode == 3
+#elif Gamut == 3
 // NZ8 no filter primaries
 const static float2 r = {0.6568, 0.3395};
 const static float2 g = {0.3029, 0.6732};
@@ -115,9 +116,9 @@ float3 xyz_to_2020_rgb(float3 xyz) {
 
 // Convert XYZ to linear smaller gamut RGB
 float3 xyz_to_smaller_rgb(float3 xyz) {
-    #if Mode == 2
+    #if Gamut == 2
     return mul(XYZ_2_709_RGB, xyz);
-    #elif Mode == 3
+    #elif Gamut == 3
     return mul(XYZ_2_NZ8_RGB, xyz);
     #endif
     return mul(XYZ_2_P3_RGB, xyz);
@@ -125,9 +126,9 @@ float3 xyz_to_smaller_rgb(float3 xyz) {
 
 // Convert linear smaller gamut RGB to XYZ
 float3 smaller_rgb_to_xyz(float3 rgb) {
-    #if Mode == 2
+    #if Gamut == 2
     return mul(RGB_709_2_XYZ, rgb);
-    #elif Mode == 3
+    #elif Gamut == 3
     return mul(RGB_NZ8_2_XYZ, rgb);
     #endif
     return mul(P3_RGB_2_XYZ, rgb);
@@ -187,6 +188,8 @@ float4 main(float2 tex : TEXCOORD0) : COLOR {
 
   float3 lin = pq_to_lin(c0.rgb);      //Convert PQ to linear
   float3 XYZ = rgb_2020_to_xyz(lin);   //Convert 2020 RGB to XYZ
+
+#if Mode == 1
   float3 xyY = xyz_to_xyY(XYZ);        //Convert XYZ to xyY
 
 //Desat if within smaller gamut
@@ -195,18 +198,25 @@ float4 main(float2 tex : TEXCOORD0) : COLOR {
 	float3 desat = lin_to_pq(float3(lum, lum, lum));
 	return float4(desat.r, desat.g, desat.b, 1);
   }
+#endif
 
 // Highlight based on dEITP threshold  
-
-  float3 lms1 = rgb_to_lms(lin);           //Convert 2020 RGB to LMS
-  float3 PQlms1 = lin_to_pq(lms1);         //Original pixel in PQ LMS
 
   float3 SGpt = xyz_to_smaller_rgb(XYZ);   //Convert XYZ to smaller gamut RGB
   float3 cSGpt = saturate(SGpt);           //Clip to smaller gamut
   float3 cXYZ = smaller_rgb_to_xyz(cSGpt); //Convert back to XYZ
   float3 cRGB = xyz_to_2020_rgb(cXYZ);     //Convert back to 2020 RGB
+
+#if Mode == 2
+  float3 cPQ = lin_to_pq(cRGB);
+  return float4(cPQ.r, cPQ.g, cPQ.b, 1); 
+#endif
+
   float3 lms2 = rgb_to_lms(cRGB);          //Convert 2020 RGB to LMS
   float3 PQlms2 = lin_to_pq(lms2);         //Smaller-gamut-clamped pixel in PQ LMS
+
+  float3 lms1 = rgb_to_lms(lin);           //Convert 2020 RGB to LMS
+  float3 PQlms1 = lin_to_pq(lms1);         //Original pixel in PQ LMS
 
   float dE = dEITP(pq_lms_to_itp(PQlms1), pq_lms_to_itp(PQlms2));   //Calc dEITP for original pixel vs clamped pixel
 
