@@ -1,7 +1,7 @@
 // $MinimumShaderProfile: ps_3_0
 // Highlight out-of-gamut colors
 
-#define Mode 1  //Mode 1: P3, Mode 2: 709
+#define Mode 1  //Mode 1: P3, Mode 2: 709, Mode 3: NZ8 no filter
  
 //PQ constants
 const static float m1 = 2610.0 / 16384;
@@ -19,13 +19,6 @@ const static float3x3 RGB_2020_2_XYZ = {
      0.0000000,  0.0280727,  1.0609851
 };
 
-//Convert from XYZ to linear P3 RGB
-const static float3x3 XYZ_2_P3_RGB = {
-     2.4934969, -0.9313836, -0.4027108,
-    -0.8294890,  1.7626641,  0.0236247,
-     0.0358458, -0.0761724,  0.9568845
-};
-
 //Convert from XYZ to linear 2020 RGB
 const static float3x3 XYZ_2_2020_RGB = {
      1.7166512, -0.3556708, -0.2533663,
@@ -40,11 +33,11 @@ const static float3x3 P3_RGB_2_XYZ = {
      0.0000000,  0.0451134,  1.0439444
 };
 
-//Convert from XYZ to linear 709 RGB
-const static float3x3 XYZ_2_709_RGB = {
-     3.2409699, -1.5373832, -0.4986108,
-    -0.9692436,  1.8759675,  0.0415551,
-     0.0556301, -0.2039770,  1.0569715
+//Convert from XYZ to linear P3 RGB
+const static float3x3 XYZ_2_P3_RGB = {
+     2.4934969, -0.9313836, -0.4027108,
+    -0.8294890,  1.7626641,  0.0236247,
+     0.0358458, -0.0761724,  0.9568845
 };
 
 //Convert from linear 709 RGB to XYZ
@@ -54,11 +47,37 @@ const static float3x3 RGB_709_2_XYZ = {
      0.0193308,  0.1191948,  0.9505322
 };
 
+//Convert from XYZ to linear 709 RGB
+const static float3x3 XYZ_2_709_RGB = {
+     3.2409699, -1.5373832, -0.4986108,
+    -0.9692436,  1.8759675,  0.0415551,
+     0.0556301, -0.2039770,  1.0569715
+};
+
+//Convert from linear NZ8 RGB to XYZ
+const static float3x3 RGB_NZ8_2_XYZ = {
+     0.4400503,  0.3138823,  0.1965233,
+     0.2274621,  0.6976084,  0.0749295,
+     0.0024790,  0.0247666,  1.0618122
+};
+
+//Convert from XYZ to linear NZ8 RGB
+const static float3x3 XYZ_2_NZ8_RGB = {
+     2.9536324, -1.3128403, -0.4540228,
+    -0.9647370,  1.8658787,  0.0468858,
+     0.0156066, -0.0404562,  0.9417525
+};
+
 #if Mode == 2
 // 709 primaries
 const static float2 r = {0.64, 0.33};
 const static float2 g = {0.3, 0.6};
 const static float2 b = {0.15, 0.06};
+#elif Mode == 3
+// NZ8 no filter primaries
+const static float2 r = {0.6568, 0.3395};
+const static float2 g = {0.3029, 0.6732};
+const static float2 b = {0.1474, 0.0562};
 #else
 // P3 primaries
 const static float2 r = {0.68, 0.32};
@@ -98,6 +117,8 @@ float3 xyz_to_2020_rgb(float3 xyz) {
 float3 xyz_to_smaller_rgb(float3 xyz) {
     #if Mode == 2
     return mul(XYZ_2_709_RGB, xyz);
+    #elif Mode == 3
+    return mul(XYZ_2_NZ8_RGB, xyz);
     #endif
     return mul(XYZ_2_P3_RGB, xyz);
 }
@@ -106,6 +127,8 @@ float3 xyz_to_smaller_rgb(float3 xyz) {
 float3 smaller_rgb_to_xyz(float3 rgb) {
     #if Mode == 2
     return mul(RGB_709_2_XYZ, rgb);
+    #elif Mode == 3
+    return mul(RGB_NZ8_2_XYZ, rgb);
     #endif
     return mul(P3_RGB_2_XYZ, rgb);
 }
